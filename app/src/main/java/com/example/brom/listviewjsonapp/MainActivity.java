@@ -4,6 +4,17 @@ import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,6 +22,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 
 
 // Create a new class, Mountain, that can hold your JSON data
@@ -26,10 +38,53 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
+    ArrayList<Mountain> mountainList = new ArrayList<>();
+    ListView myListView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        FetchData fetchdata = new FetchData();
+        fetchdata.execute();
+
+        myListView = (ListView)findViewById(R.id.listview);
+
+        myListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+
+                Toast toast = Toast.makeText(getApplication(), mountainList.get(position).toastText(), Toast.LENGTH_LONG);
+                toast.show();
+            }
+        });
+
+
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        int id = item.getItemId();
+
+        if(id == R.id.action_refresh)
+        {
+            mountainList.clear();
+            new FetchData().execute();
+            Toast refreshed = Toast.makeText(this, "List have been refreshed", Toast.LENGTH_SHORT);
+            refreshed.show();
+
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     private class FetchData extends AsyncTask<Void,Void,String>{
@@ -45,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 // Construct the URL for the Internet service
-                URL url = new URL("_ENTER_THE_URL_TO_THE_PHP_SERVICE_SERVING_JSON_HERE_");
+                URL url = new URL("http://wwwlab.iit.his.se/brom/kurser/mobilprog/dbservice/admin/getdataasjson.php?type=brom");
 
                 // Create the request to the PHP-service, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
@@ -96,11 +151,38 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(String o) {
             super.onPostExecute(o);
+            try {
+
+                JSONArray Mountainlist = new JSONArray(o);
+
+                for(int i = 0; i < Mountainlist.length();i++) {
+                    JSONObject mountain = Mountainlist.getJSONObject(i);
+
+                    String name = mountain.getString("name");
+                    String location = mountain.getString("location");
+                    int height = mountain.getInt("size");
+
+                    Mountain m = new Mountain(name, location, height);
+
+                    mountainList.add(m);
+
+
+                }
+
+            } catch (JSONException e) {
+                Log.e("brom","E:"+e.getMessage());
+            }
+
+            ArrayAdapter adapter = new ArrayAdapter(getApplicationContext(), R.layout.listview,
+                    R.id.itemtextview, mountainList);
+            myListView = (ListView)findViewById(R.id.listview);
+            myListView.setAdapter(adapter);
             // This code executes after we have received our data. The String object o holds
             // the un-parsed JSON string or is null if we had an IOException during the fetch.
 
             // Implement a parsing code that loops through the entire JSON and creates objects
             // of our newly created Mountain class.
+
         }
     }
 }
